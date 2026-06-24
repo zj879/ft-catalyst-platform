@@ -2166,8 +2166,8 @@ elif page == "🔬 自动抠取数据":
     # ========== 脚本目录和PDF根目录（相对路径，兼容云端和本地） ==========
     _base_dir = Path(__file__).parent
     DEFAULT_SCRIPTS_DIR = str(_base_dir)
-    DEFAULT_PDF_ROOT    = str(_base_dir / "downloads")
-    DEFAULT_OUT_DIR     = str(_base_dir / "outputs")
+    DEFAULT_PDF_ROOT    = str(_base_dir)
+    DEFAULT_OUT_DIR     = str(_base_dir)
     # ================================================================
 
     # ────────────────────────────────────────
