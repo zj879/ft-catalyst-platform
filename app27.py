@@ -1353,23 +1353,27 @@ elif page == "🗃️ 数据库浏览":
 
     # 优先使用相对路径（云端部署），找不到时回退到本地路径（本地运行）
     _base = Path(__file__).parent
-    DB_PATH = str(next(
-        (p for p in [
-            _base / "data" / "FT_SAF_catalyst_extraction_wide_table.xlsx",
-            _base / "FT_SAF_catalyst_extraction_wide_table.xlsx",
-            Path(r"D:\agent\saf_extraction\outputs\FT_SAF_catalyst_extraction_wide_table.xlsx"),
-        ] if p.exists()),
-        _base / "data" / "FT_SAF_catalyst_extraction_wide_table.xlsx"  # 默认值（文件不存在时给出提示）
-    ))
+    _db_candidates = [
+        _base / "data" / "FT_SAF_catalyst_extraction_wide_table.xlsx",
+        _base / "data" / "FT_SAF_catalyst_extraction_wide_table - 副本.csv",
+        _base / "data" / "FT_SAF_catalyst_extraction_wide_table.csv",
+        _base / "FT_SAF_catalyst_extraction_wide_table.xlsx",
+        _base / "FT_SAF_catalyst_extraction_wide_table.csv",
+        Path(r"D:\agent\saf_extraction\outputs\FT_SAF_catalyst_extraction_wide_table.xlsx"),
+    ]
+    _db_found = next((p for p in _db_candidates if p.exists()), None)
+    DB_PATH = str(_db_found) if _db_found else str(_base / "data" / "FT_SAF_catalyst_extraction_wide_table.xlsx")
 
     @st.cache_data(show_spinner="加载数据库…")
     def load_db(path):
         try:
-            if Path(path).exists():
-                df = pd.read_excel(path)
-            else:
-                st.warning(f"⚠️ 数据文件不存在：{path}\n\n请将 `FT_SAF_catalyst_extraction_wide_table.xlsx` 放在项目的 `data/` 目录下后重新部署。")
+            if not Path(path).exists():
+                st.warning(f"⚠️ 数据文件不存在：{path}\n\n请将数据文件放在项目的 `data/` 目录下后重新部署。")
                 return pd.DataFrame()
+            if path.endswith(".csv"):
+                df = pd.read_csv(path, encoding="utf-8-sig")
+            else:
+                df = pd.read_excel(path)
         except Exception as e:
             st.error(f"读取数据库失败：{e}")
             return pd.DataFrame()
@@ -1379,7 +1383,8 @@ elif page == "🗃️ 数据库浏览":
                     "metal_particle_size_nm", "H2_CO_ratio"]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
-        df["year"] = pd.to_numeric(df["year"], errors="coerce")
+        if "year" in df.columns:
+            df["year"] = pd.to_numeric(df["year"], errors="coerce")
         # 过滤明显错误的异常值
         if "reaction_temperature_C" in df.columns:
             df.loc[df["reaction_temperature_C"] > 1200, "reaction_temperature_C"] = float("nan")
@@ -1390,6 +1395,9 @@ elif page == "🗃️ 数据库浏览":
         return df
 
     db = load_db(DB_PATH)
+
+    if db.empty:
+        st.stop()
 
     # ── 提取催化剂家族主类（取第一段）──
     def primary_family(val):
@@ -1402,8 +1410,9 @@ elif page == "🗃️ 数据库浏览":
             return "未知"
         return str(val).split(";")[0].strip()
 
-    db["_family_primary"] = db["catalyst_family"].apply(primary_family)
-    db["_metal_primary"]  = db["active_metal"].apply(primary_metal)
+    # 兼容列名不存在的情况
+    db["_family_primary"] = db["catalyst_family"].apply(primary_family) if "catalyst_family" in db.columns else "未知"
+    db["_metal_primary"]  = db["active_metal"].apply(primary_metal) if "active_metal" in db.columns else "未知"
 
     # ── 侧边筛选区（左侧列） ──
     left_col, right_col = st.columns([1, 3])
@@ -1626,8 +1635,10 @@ elif page == "📥 论文自动下载":
 
         col_up, col_tip = st.columns([2, 1])
         with col_up:
+            st.markdown("**上传 xlsx / csv（含 DOI 列）**")
             uploaded = st.file_uploader("上传 xlsx / csv（含 DOI 列）",
-                                        type=["csv","xlsx"], key="doi_upload")
+                                        type=["csv","xlsx"], key="doi_upload",
+                                        label_visibility="collapsed")
         with col_tip:
             st.markdown("""
             <div class="info-box">
@@ -2705,14 +2716,22 @@ elif page == "🔬 自动抠取数据":
 elif page == "📈 数据可视化分析":
 
     _base_dir = Path(__file__).parent
-    DEFAULT_EXTRACTIONS_CSV = str(next(
-        (p for p in [
-            _base_dir / "outputs" / "extractions_long.csv",
-            _base_dir / "extractions_long.csv",
+    # 自动搜索可能的CSV位置，包括带时间戳的文件名
+    def _find_extractions_csv(base):
+        candidates = [
+            base / "data" / "extractions_long.csv",
+            base / "outputs" / "extractions_long.csv",
+            base / "extractions_long.csv",
             Path(r"D:\agent\saf_extraction\outputs\extractions_long.csv"),
-        ] if p.exists()),
-        _base_dir / "outputs" / "extractions_long.csv"
-    ))
+        ]
+        # 还要搜索 data/ 下面带时间戳的文件，如 extractions_long_20260621_1608.csv
+        for folder in [base / "data", base / "outputs", base]:
+            if folder.exists():
+                for f in sorted(folder.glob("extractions_long*.csv"), reverse=True):
+                    candidates.insert(0, f)
+        return next((str(p) for p in candidates if p.exists()), str(base / "data" / "extractions_long.csv"))
+
+    DEFAULT_EXTRACTIONS_CSV = _find_extractions_csv(_base_dir)
 
     st.markdown("""
     <div class="info-box">
@@ -2728,7 +2747,9 @@ elif page == "📈 数据可视化分析":
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
         load_clicked = st.button("📂 加载数据", type="primary", use_container_width=True, key="viz_load_btn")
 
-    uploaded_csv = st.file_uploader("...或者直接上传 CSV 文件", type=["csv"], key="viz_csv_upload")
+    st.markdown("**或者直接上传 CSV 文件**")
+    uploaded_csv = st.file_uploader("或者直接上传 CSV 文件", type=["csv"], key="viz_csv_upload",
+                                    label_visibility="collapsed")
 
     if "viz_stages" not in st.session_state:
         st.session_state["viz_stages"] = None
