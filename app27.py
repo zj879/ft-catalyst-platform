@@ -195,12 +195,15 @@ h1, h2, h3, h4, h5, h6, .stMarkdown, .stText {
     box-shadow:0 2px 8px rgba(21,101,192,0.35) !important;
 }
 
-/* 隐藏上传按钮内部重复文字，只保留图标 */
-[data-testid="stFileUploader"] [data-testid="stFileUploaderDropzoneInput"] + div span {
+/* 彻底隐藏上传组件内的按钮，只保留拖拽区域 */
+[data-testid="stFileUploaderDropzone"] button {
     display: none !important;
 }
 [data-testid="stFileUploaderDropzone"] small {
     display: none !important;
+}
+[data-testid="stFileUploaderDropzone"] {
+    justify-content: center !important;
 }
 </style>
 """, unsafe_allow_html=True)
