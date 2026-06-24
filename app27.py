@@ -194,6 +194,14 @@ h1, h2, h3, h4, h5, h6, .stMarkdown, .stText {
     background:linear-gradient(135deg,#0D2B5E,#0D47A1) !important;
     box-shadow:0 2px 8px rgba(21,101,192,0.35) !important;
 }
+
+/* 隐藏上传按钮内部重复文字，只保留图标 */
+[data-testid="stFileUploader"] [data-testid="stFileUploaderDropzoneInput"] + div span {
+    display: none !important;
+}
+[data-testid="stFileUploaderDropzone"] small {
+    display: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1635,7 +1643,6 @@ elif page == "📥 论文自动下载":
 
         col_up, col_tip = st.columns([2, 1])
         with col_up:
-            st.markdown("**上传 xlsx / csv（含 DOI 列）**")
             uploaded = st.file_uploader("上传 xlsx / csv（含 DOI 列）",
                                         type=["csv","xlsx"], key="doi_upload",
                                         label_visibility="collapsed")
@@ -2747,7 +2754,6 @@ elif page == "📈 数据可视化分析":
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
         load_clicked = st.button("📂 加载数据", type="primary", use_container_width=True, key="viz_load_btn")
 
-    st.markdown("**或者直接上传 CSV 文件**")
     uploaded_csv = st.file_uploader("或者直接上传 CSV 文件", type=["csv"], key="viz_csv_upload",
                                     label_visibility="collapsed")
 
