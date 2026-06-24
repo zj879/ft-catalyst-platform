@@ -1631,7 +1631,7 @@ elif page == "📥 论文自动下载":
     if "manifest" not in st.session_state:
         st.session_state["manifest"] = []
     if "out_dir"  not in st.session_state:
-        st.session_state["out_dir"] = "./downloads"
+        st.session_state["out_dir"] = "/tmp/ft_downloads"
     if "webvpn_log" not in st.session_state:
         st.session_state["webvpn_log"] = pd.DataFrame()
 
@@ -1798,6 +1798,7 @@ elif page == "📥 论文自动下载":
                     )
                 if counts.get("success",0):
                     st.success(f"✅ 成功下载 {counts['success']} 篇，保存至 {st.session_state['out_dir']}")
+                    st.warning("⚠️ 注意：云端部署时 PDF 保存在 `/tmp` 临时目录，应用重启后文件会丢失。请及时通过下方「导出结果」下载记录。")
                 st.dataframe(pd.DataFrame(log), use_container_width=True, height=220)
 
             st.markdown("---")
@@ -1944,7 +1945,7 @@ elif page == "📥 论文自动下载":
             col_dir, col_kb, col_sha = st.columns([3, 1, 1])
             with col_dir:
                 scan_dir = st.text_input("扫描目录（下载 PDF 所在文件夹）",
-                                         value=st.session_state.get("out_dir", "./downloads"),
+                                         value=st.session_state.get("out_dir", "/tmp/ft_downloads"),
                                          key="scan_dir")
             with col_kb:
                 min_kb_scan = st.number_input("最小体积 KB", 5, 200, 20, key="min_kb_scan")
